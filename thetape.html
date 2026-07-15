@@ -1,179 +1,377 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The tape</title>
-  <style>
-    /* Reset & Page Background */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Tape</title>
+<style>
+  :root{
+    --wood: #6b4a35;
+    --wood-dark: #4a3226;
+    --bg: #1b1917;
+    --paper: #efe9df;
+    --amber: #d98c3a;
+  }
 
-    body {
-      background: linear-gradient(135deg, #1e1e24 0%, #0f0f12 100%);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      font-family: 'Courier New', Courier, monospace; /* Retro typewriter look */
-    }
+  * { box-sizing: border-box; }
 
-    /* STEP 3: CSS STYLING & POSITIONING */
-    /* This is where the visualization and animation behavior are defined. */
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
 
-    /* Define the master container */
-    .deck-container {
-      position: relative; /* All absolute children are locked to this box */
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      background-color: #1a1a1a; /* Clean dark background for the page */
-    }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
 
-    /* Ensure the main image doesn't stretch or distort */
-    .main-unit-image {
-      max-width: 100%;
-      height: auto;
-      user-select: none; /* Prevents text highlights on the SONY logo */
-    }
+  .stage {
+    width: 100%;
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+  }
 
-    /* Define generic interactive overlay properties */
-    .trigger-zone {
-      position: absolute;
-      cursor: pointer;
-    /* border: 1px solid red;  <-- CRITICAL DEBUG TOOL! Turn this on to see where your transparent invisible overlay boxes are. Remove when done. --> */
-    }
+  /* ---------- The tape player ---------- */
 
-    /* --- THE REEL POSITIONING & ANIMATION --- */
+  .tape-player {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1195 / 896;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: 6px;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.65);
+    transition: transform 0.15s ease;
+  }
 
-    .spinning-reel {
-      position: absolute;
-      top: 50%; /* Position example */
-      left: 50%;
-      transform-origin: center center; /* Rotation anchor point */
-    }
+  .tape-player:active {
+    transform: scale(0.995);
+  }
 
-    /* Target the left (Supply) reel. Positioning is critical and must be pixel-perfect. */
-    #reel-left {
-      top: 15%; /* Example V-position */
-      left: 10%; /* Example H-position */
-      width: 300px; /* Example size to match background scale */
-    }
+  .tape-player img.deck {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+    -webkit-user-drag: none;
+  }
 
-    /* Target the right (Take-up) reel. */
-    #reel-right {
-      top: 15%; /* Example V-position */
-      right: 10%; /* Example H-position */
-      width: 300px;
-    }
+  /* Reel viewport: a circular window cut over each spindle on the deck photo */
+  .reel-window {
+    position: absolute;
+    overflow: hidden;
+    border-radius: 50%;
+    pointer-events: none;
+  }
 
-    /* Define the rotation animation */
-    @keyframes spinClockwise {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
+  .reel-window.left {
+    left: 17.154%;
+    top: 7.254%;
+    width: 33.473%;
+    height: 44.643%;
+  }
 
-    /* Trigger class added via JS on PLAY */
-    .playing .spinning-reel {
-      animation: spinClockwise 10s linear infinite; /* Example spin duration */
-    }
-  </style>
+  .reel-window.right {
+    left: 50.209%;
+    top: 6.138%;
+    width: 33.473%;
+    height: 44.643%;
+  }
+
+  .reel-window img.reel {
+    position: absolute;
+    width: 153.21%;
+    height: 114.87%;
+    left: -26.86%;
+    top: -7.44%;
+    max-width: none;
+    transform-origin: 50.17% 50%;
+    animation: spin 2.6s linear infinite;
+    animation-play-state: paused;
+    -webkit-user-drag: none;
+  }
+
+  /* Slightly different timing per reel to feel less mechanical once tape "unspools" -
+     kept identical here since supply/takeup ratio isn't modeled, but easy to offset */
+  .reel-window.right img.reel {
+    animation-duration: 2.6s;
+  }
+
+  .tape-player.playing .reel-window img.reel {
+    animation-play-state: running;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  /* center play/pause glyph, only really visible when paused */
+  .glyph {
+    position: absolute;
+    left: 50%;
+    top: 63%;
+    transform: translate(-50%, -50%);
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: rgba(20, 18, 16, 0.55);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.9;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+  }
+
+  .tape-player.playing .glyph {
+    opacity: 0;
+  }
+
+  .glyph svg { width: 18px; height: 18px; fill: var(--paper); }
+
+  /* ---------- Below-deck controls ---------- */
+
+  .controls {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--paper);
+  }
+
+  .track-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .track-title {
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    color: var(--paper);
+    opacity: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .time-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .time {
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    color: var(--paper);
+    opacity: 0.55;
+    width: 34px;
+  }
+
+  .time.end { text-align: right; }
+
+  .scrub {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 3px;
+    border-radius: 3px;
+    background: rgba(239,233,223,0.2);
+    outline: none;
+    cursor: pointer;
+  }
+
+  .scrub::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--amber);
+    cursor: pointer;
+    margin-top: -4px;
+  }
+
+  .scrub::-moz-range-thumb {
+    width: 11px;
+    height: 11px;
+    border: none;
+    border-radius: 50%;
+    background: var(--amber);
+    cursor: pointer;
+  }
+
+  .scrub::-webkit-slider-runnable-track {
+    height: 3px;
+    border-radius: 3px;
+    background: rgba(239,233,223,0.2);
+  }
+
+  .hint {
+    font-size: 12px;
+    color: var(--paper);
+    opacity: 0.35;
+    text-align: center;
+  }
+
+  .file-fallback {
+    font-size: 12px;
+    color: var(--amber);
+    opacity: 0.8;
+    text-decoration: underline;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+  }
+
+  .file-fallback:hover { opacity: 1; }
+</style>
 </head>
-
 <body>
 
-  <audio id="audio-element" src="tape.mp3" preload="metadata"></audio>
-  <div class="deck-container">
-    <img src="images/sony-tc366-unit.png" alt="SONY TC-366 Reel to Reel" class="main-unit-image">
+  <div class="stage">
 
-    <div id="play-pause-overlay" class="trigger-zone" title="Click to Play/Pause">
+    <div class="tape-player" id="tapePlayer" role="button" tabindex="0" aria-label="Play or pause">
+      <img class="deck" src="assets/tape-deck.png" alt="Sony TC-366 reel-to-reel tape deck" draggable="false">
+
+      <div class="reel-window left">
+        <img class="reel" src="assets/reel-left.png" alt="" draggable="false">
+      </div>
+
+      <div class="reel-window right">
+        <img class="reel" src="assets/reel-right.png" alt="" draggable="false">
+      </div>
+
+      <div class="glyph">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </div>
     </div>
 
-    <img src="images/left-reel-transparent.png" id="reel-left" class="spinning-reel" alt="Supply Reel">
-    <img src="images/right-reel-transparent.png" id="reel-right" class="spinning-reel" alt="Take-up Reel">
-  
-    <div class="progress-bar-container">
-      <div id="progress-fill" class="progress-fill"></div>
+    <div class="controls">
+      <div class="track-info">
+        <div class="track-title" id="trackTitle">No track loaded — click the deck, then choose a file</div>
+        <div class="time-row">
+          <span class="time" id="timeCurrent">0:00</span>
+          <input type="range" class="scrub" id="scrub" min="0" max="100" value="0" step="0.1">
+          <span class="time end" id="timeEnd">0:00</span>
+        </div>
+      </div>
     </div>
 
+    <div class="hint">
+      Click anywhere on the deck to play / pause &nbsp;·&nbsp;
+      <button class="file-fallback" id="fileFallback" type="button">load an audio file</button>
+    </div>
+
+    <input type="file" id="fileInput" accept="audio/*" style="display:none">
   </div>
 
+  <audio id="audio" preload="metadata"></audio>
+
   <script>
-    const audio = document.getElementById('audio-element');
-    const playBtn = document.getElementById('play-btn');
-    const stopBtn = document.getElementById('stop-btn');
-    const cassette = document.getElementById('cassette');
-    const progressContainer = document.getElementById('progress-container');
-    const progressFill = document.getElementById('progress-fill');
-    / This connects the user's clicks on the image map to the audio control and animations.
+    const player     = document.getElementById('tapePlayer');
+    const audio      = document.getElementById('audio');
+    const glyphPlay   = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+    const glyphPause  = '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+    const glyphEl     = player.querySelector('.glyph');
 
-    const deck = document.getElementById('deck-container'); // The main wrapper
-    const triggerZone = document.getElementById('play-pause-overlay'); // The Play/Pause invisible button
+    const fileInput   = document.getElementById('fileInput');
+    const fileFallback= document.getElementById('fileFallback');
+    const trackTitle  = document.getElementById('trackTitle');
+    const scrub       = document.getElementById('scrub');
+    const timeCurrent = document.getElementById('timeCurrent');
+    const timeEnd     = document.getElementById('timeEnd');
 
-    // --- Master Trigger Event ---
-    triggerZone.addEventListener('click', togglePlayback);
+    // ---- Optional: point this at your own file to autoload it ----
+    // audio.src = "assets/your-track.mp3";
+    // trackTitle.textContent = "Your Track Name";
 
-    function togglePlayback() {
+    function formatTime(sec) {
+      if (!isFinite(sec)) return "0:00";
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60).toString().padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    function togglePlay() {
+      if (!audio.src) {
+        fileInput.click();
+        return;
+      }
       if (audio.paused) {
         audio.play();
-    
-      // Developer Comment: This is the critical linkage! 
-      // Adding this class to the master container starts the rotation of both 
-      // transparent reels (which are nested CSS children in Step 2).
-        deck.classList.add('playing'); 
       } else {
         audio.pause();
-    
-        // Stop the reels instantly.
-        deck.classList.remove('playing');
       }
     }
-    
-    // Play/Pause Action
-    playBtn.addEventListener('click', () => {
-      if (audio.paused) {
-        audio.play();
-        cassette.classList.add('playing'); // Starts spinning animation
-      } else {
-        audio.pause();
-        cassette.classList.remove('playing'); // Stops spinning animation
+
+    player.addEventListener('click', togglePlay);
+    player.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        togglePlay();
       }
     });
 
-    // Stop Action
-    stopBtn.addEventListener('click', () => {
-      audio.pause();
-      audio.currentTime = 0;
-      cassette.classList.remove('playing');
-      progressFill.style.width = '0%';
+    audio.addEventListener('play', () => {
+      player.classList.add('playing');
     });
 
-    // Update progress bar
-    audio.addEventListener('timeupdate', () => {
-      if (audio.duration) {
-        const percentage = (audio.currentTime / audio.duration) * 100;
-        progressFill.style.width = `${percentage}%`;
-      }
+    audio.addEventListener('pause', () => {
+      player.classList.remove('playing');
     });
 
-    // Scrub / Seek through progress bar
-    progressContainer.addEventListener('click', (e) => {
-      const width = progressContainer.clientWidth;
-      const clickX = e.offsetX;
-      if (audio.duration) {
-        audio.currentTime = (clickX / width) * audio.duration;
-      }
-    });
-
-    // Reset when track ends
     audio.addEventListener('ended', () => {
-      cassette.classList.remove('playing');
-      progressFill.style.width = '0%';
+      player.classList.remove('playing');
+    });
+
+    audio.addEventListener('loadedmetadata', () => {
+      scrub.max = audio.duration;
+      timeEnd.textContent = formatTime(audio.duration);
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      if (!scrub.matches(':active')) {
+        scrub.value = audio.currentTime;
+      }
+      timeCurrent.textContent = formatTime(audio.currentTime);
+    });
+
+    scrub.addEventListener('input', () => {
+      audio.currentTime = scrub.value;
+    });
+
+    // Stop clicks on controls from also toggling the deck
+    document.querySelector('.controls').addEventListener('click', (e) => e.stopPropagation());
+    document.querySelector('.hint').addEventListener('click', (e) => e.stopPropagation());
+
+    fileFallback.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      audio.src = url;
+      trackTitle.textContent = file.name.replace(/\.[^/.]+$/, "");
+      audio.play();
     });
   </script>
+
 </body>
 </html>
