@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Crucial for mobile scaling and disabling accidental zoom gestures -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Shape Matcher Touch Edition</title>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --bg: #f5f6fa;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #333;
+            /* Prevents weird selection highlights when tapping quickly on mobile */
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #game-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 95%;
+            box-sizing: border-box;
+        }
+
+        .setup-screen, .game-screen, .end-screen {
+            display: none;
+        }
+
+        .active {
+            display: block !important;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .card-row-wrapper {
+            overflow: hidden;
+            border: 2px dashed #ccc;
+            padding: 15px 5px;
+            border-radius: 10px;
+            background: #fafafa;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .target-zone {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            bottom: 10px;
+            width: 175px; /* Sized beautifully for mobile screen layouts */
+            border: 3px solid var(--primary);
+            border-radius: 8px;
+            pointer-events: none;
+            box-shadow: 0 0 10px rgba(74, 144, 226, 0.2);
+            z-index: 10;
+        }
+
+        .card-row {
+            display: flex;
+            gap: 10px;
+            padding-left: 5px;
+        }
+
+        .card {
+            min-width: 75px;
+            height: 110px;
+            background: var(--card-bg);
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            font-size: 2.8rem;
+            font-weight: bold;
+        }
+
+        .card:nth-child(1), .card:nth-child(2) {
+            border-color: var(--primary);
+            background: #eef5fc;
+        }
+
+        .shape-red    { color: #e74c3c; }
+        .shape-blue   { color: #3498db; }
+        .shape-green  { color: #2ecc71; }
+        .shape-yellow { color: #f1c40f; }
+        .shape-purple { color: #9b59b6; }
+        .shape-orange { color: #e67e22; }
+
+        @keyframes correct-flash {
+            0% { background-color: white; }
+            50% { background-color: #d4edda; }
+            100% { background-color: white; }
+        }
+
+        @keyframes wrong-flash {
+            0% { background-color: white; }
+            50% { background-color: #f8d7da; }
+            100% { background-color: white; }
+        }
+
+        .flash-correct { animation: correct-flash 0.2s ease; }
+        .flash-wrong { animation: wrong-flash 0.2s ease; }
+
+        input[type="number"] {
+            padding: 12px;
+            font-size: 1.1rem;
+            width: 90px;
+            text-align: center;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border: none;
+            background-color: var(--primary);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Giant, chunky touch targets for quick mobile reflex tapping */
+        .controls {
+            margin-top: 25px;
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .btn-action {
+            flex: 1;
+            font-size: 1.5rem;
+            padding: 25px 0;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+        
+        .btn-yes { background-color: var(--success); }
+        .btn-no { background-color: var(--danger); }
+
+        .btn-action:active {
+            transform: scale(0.96);
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- SETUP SCREEN -->
+    <div id="setup-screen" class="setup-screen active">
+        <h2>Shape Matcher</h2>
+        <p>Look at the <b>first two highlighted shapes</b> on the left.</p>
+        <p style="margin-bottom: 25px;">Tap <b>YES</b> if they match.<br>Tap <b>NO</b> if they are different.</p>
+        <div>
+            <label for="time-input" style="display:block; margin-bottom:8px; font-weight:bold;">Game Length (secs):</label>
+            <input type="number" id="time-input" value="30" min="5" max="300"><br>
+            <button id="start-btn" style="width: 100%;">Start Game</button>
+        </div>
+    </div>
+
+    <!-- GAME PLAY SCREEN -->
+    <div id="game-screen" class="game-screen">
+        <div class="stats">
+            <div>Score: <span id="score-display">0</span></div>
+            <div>Time: <span id="timer-display">30</span>s</div>
+        </div>
+
+        <div class="card-row-wrapper">
+            <div class="target-zone"></div>
+            <div id="card-row" class="card-row"></div>
+        </div>
+
+        <!-- Giant mobile touch-friendly triggers -->
+        <div class="controls">
+            <button id="no-btn" class="btn-action btn-no">NO</button>
+            <button id="yes-btn" class="btn-action btn-yes">YES</button>
+        </div>
+    </div>
+
+    <!-- END GAME SCREEN -->
+    <div id="end-screen" class="end-screen">
+        <h2>Game Over!</h2>
+        <p style="font-size: 1.8rem;">Final Score: <b id="final-score">0</b></p>
+        <button id="restart-btn" style="width: 100%; margin-top: 20px;">Play Again</button>
+    </div>
+</div>
+
+<script>
+    var SHAPE_DATA = [
+        { symbol: '▲', styleClass: 'shape-red' },
+        { symbol: '■', styleClass: 'shape-blue' },
+        { symbol: '●', styleClass: 'shape-green' },
+        { symbol: '★', styleClass: 'shape-yellow' },
+        { symbol: '♦', styleClass: 'shape-purple' },
+        { symbol: '♣', styleClass: 'shape-orange' }
+    ];
+    
+    var ROW_CAPACITY = 5; // Reduced slightly to elegantly fit mobile displays horizontally
+    var deck = [];
+    var score = 0;
+    var timeLeft = 30;
+    var gameInterval = null;
+    var isGameRunning = false;
+    var audioCtx = null;
+
+    var setupScreen = document.getElementById('setup-screen');
+    var gameScreen = document.getElementById('game-screen');
+    var endScreen = document.getElementById('end-screen');
+    var startBtn = document.getElementById('start-btn');
+    var restartBtn = document.getElementById('restart-btn');
+    var yesBtn = document.getElementById('yes-btn');
+    var noBtn = document.getElementById('no-btn');
+    var timeInput = document.getElementById('time-input');
+    var scoreDisplay = document.getElementById('score-display');
+    var timerDisplay = document.getElementById('timer-display');
+    var finalScoreDisplay = document.getElementById('final-score');
+    var cardRow = document.getElementById('card-row');
+    var container = document.getElementById('game-container');
+
+    startBtn.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', showSetup);
+    
+    // Using pointerdown/touchstart triggers speed up performance over default clicks on mobile screens
+    yesBtn.addEventListener('click', function(e) { e.preventDefault(); handleAnswer(true); });
+    noBtn.addEventListener('click', function(e) { e.preventDefault(); handleAnswer(false); });
+
+    function showSetup() {
+        endScreen.classList.remove('active');
+        setupScreen.classList.add('active');
+    }
+
+    function playSound(type) {
+        try {
+            if (!audioCtx) {
+                var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) { audioCtx = new AudioContextClass(); }
+            }
+            if (!audioCtx) return;
+
+            var osc = audioCtx.createOscillator();
+            var gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            var now = audioCtx.currentTime;
+
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.08);
+                gainNode.gain.setValueAtTime(0.1, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.linearRampToValueAtTime(80, now + 0.15);
+                gainNode.gain.setValueAtTime(0.15, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+        } catch(e) {
+            console.log("Audio native context lock:", e);
+        }
+    }
+
+    function startGame() {
+        score = 0;
+        timeLeft = parseInt(timeInput.value, 10) || 30;
+        deck = [];
+        
+        scoreDisplay.textContent = score;
+        timerDisplay.textContent = timeLeft;
+
+        for(var i = 0; i < ROW_CAPACITY; i++) {
+            deck.push(getRandomShapeObject());
+        }
+
+        renderDeck();
+        
+        setupScreen.classList.remove('active');
+        gameScreen.classList.add('active');
+        isGameRunning = true;
+        
+        if(gameInterval) clearInterval(gameInterval);
+        gameInterval = setInterval(function() {
+            timeLeft--;
+            timerDisplay.textContent = timeLeft;
+            if (timeLeft <= 0) endGame();
+        }, 1000);
+    }
+
+    function getRandomShapeObject() {
+        return SHAPE_DATA[Math.floor(Math.random() * SHAPE_DATA.length)];
+    }
+
+    function getNextCalculatedShapeObject(currentSecondCard) {
+        var shouldMatch = Math.random() < 0.5;
+        if (shouldMatch) {
+            return currentSecondCard; 
+        } else {
+            var newShapeObj;
+            do {
+                newShapeObj = getRandomShapeObject();
+            } while (newShapeObj.symbol === currentSecondCard.symbol);
+            return newShapeObj;
+        }
+    }
+
+    function renderDeck() {
+        cardRow.innerHTML = '';
+        for(var i = 0; i < deck.length; i++) {
+            var cardData = deck[i];
+            var cardElement = document.createElement('div');
+            cardElement.className = 'card ' + cardData.styleClass;
+            cardElement.textContent = cardData.symbol;
+            cardRow.appendChild(cardElement);
+        }
+    }
+
+    function handleAnswer(playerGuessedMatch) {
+        if (!isGameRunning) return;
+
+        var actualMatch = (deck[0].symbol === deck[1].symbol);
+        var isCorrect = (playerGuessedMatch === actualMatch);
+
+        if (isCorrect) {
+            score++;
+            playSound('correct');
+            flashVisuals('flash-correct');
+        } else {
+            score--;
+            playSound('wrong');
+            flashVisuals('flash-wrong');
+        }
+        scoreDisplay.textContent = score;
+
+        deck.shift(); 
+        var nextShapeObj = getNextCalculatedShapeObject(deck[0]);
+        deck.push(nextShapeObj);
+
+        renderDeck();
+    }
+
+    function flashVisuals(className) {
+        container.classList.remove('flash-correct', 'flash-wrong');
+        void container.offsetWidth; 
+        container.classList.add(className);
+    }
+
+    function endGame() {
+        isGameRunning = false;
+        if(gameInterval) clearInterval(gameInterval);
+        finalScoreDisplay.textContent = score;
+        gameScreen.classList.remove('active');
+        endScreen.classList.add('active');
+    }
+</script>
+
+</body>
+</html>
