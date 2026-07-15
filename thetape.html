@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The tape</title>
+  <style>
+    /* Reset & Page Background */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: linear-gradient(135deg, #1e1e24 0%, #0f0f12 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Courier New', Courier, monospace; /* Retro typewriter look */
+    }
+
+    /* STEP 3: CSS STYLING & POSITIONING */
+    /* This is where the visualization and animation behavior are defined. */
+
+    /* Define the master container */
+    .deck-container {
+      position: relative; /* All absolute children are locked to this box */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #1a1a1a; /* Clean dark background for the page */
+    }
+
+    /* Ensure the main image doesn't stretch or distort */
+    .main-unit-image {
+      max-width: 100%;
+      height: auto;
+      user-select: none; /* Prevents text highlights on the SONY logo */
+    }
+
+    /* Define generic interactive overlay properties */
+    .trigger-zone {
+      position: absolute;
+      cursor: pointer;
+    /* border: 1px solid red;  <-- CRITICAL DEBUG TOOL! Turn this on to see where your transparent invisible overlay boxes are. Remove when done. --> */
+    }
+
+    /* --- THE REEL POSITIONING & ANIMATION --- */
+
+    .spinning-reel {
+      position: absolute;
+      top: 50%; /* Position example */
+      left: 50%;
+      transform-origin: center center; /* Rotation anchor point */
+    }
+
+    /* Target the left (Supply) reel. Positioning is critical and must be pixel-perfect. */
+    #reel-left {
+      top: 15%; /* Example V-position */
+      left: 10%; /* Example H-position */
+      width: 300px; /* Example size to match background scale */
+    }
+
+    /* Target the right (Take-up) reel. */
+    #reel-right {
+      top: 15%; /* Example V-position */
+      right: 10%; /* Example H-position */
+      width: 300px;
+    }
+
+    /* Define the rotation animation */
+    @keyframes spinClockwise {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Trigger class added via JS on PLAY */
+    .playing .spinning-reel {
+      animation: spinClockwise 10s linear infinite; /* Example spin duration */
+    }
+  </style>
+</head>
+
+<body>
+
+  <audio id="audio-element" src="tape.mp3" preload="metadata"></audio>
+  <div class="deck-container">
+    <img src="images/sony-tc366-unit.png" alt="SONY TC-366 Reel to Reel" class="main-unit-image">
+
+    <div id="play-pause-overlay" class="trigger-zone" title="Click to Play/Pause">
+    </div>
+
+    <img src="images/left-reel-transparent.png" id="reel-left" class="spinning-reel" alt="Supply Reel">
+    <img src="images/right-reel-transparent.png" id="reel-right" class="spinning-reel" alt="Take-up Reel">
+  
+    <div class="progress-bar-container">
+      <div id="progress-fill" class="progress-fill"></div>
+    </div>
+
+  </div>
+
+  <script>
+    const audio = document.getElementById('audio-element');
+    const playBtn = document.getElementById('play-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const cassette = document.getElementById('cassette');
+    const progressContainer = document.getElementById('progress-container');
+    const progressFill = document.getElementById('progress-fill');
+    / This connects the user's clicks on the image map to the audio control and animations.
+
+    const deck = document.getElementById('deck-container'); // The main wrapper
+    const triggerZone = document.getElementById('play-pause-overlay'); // The Play/Pause invisible button
+
+    // --- Master Trigger Event ---
+    triggerZone.addEventListener('click', togglePlayback);
+
+    function togglePlayback() {
+      if (audio.paused) {
+        audio.play();
+    
+      // Developer Comment: This is the critical linkage! 
+      // Adding this class to the master container starts the rotation of both 
+      // transparent reels (which are nested CSS children in Step 2).
+        deck.classList.add('playing'); 
+      } else {
+        audio.pause();
+    
+        // Stop the reels instantly.
+        deck.classList.remove('playing');
+      }
+    }
+    
+    // Play/Pause Action
+    playBtn.addEventListener('click', () => {
+      if (audio.paused) {
+        audio.play();
+        cassette.classList.add('playing'); // Starts spinning animation
+      } else {
+        audio.pause();
+        cassette.classList.remove('playing'); // Stops spinning animation
+      }
+    });
+
+    // Stop Action
+    stopBtn.addEventListener('click', () => {
+      audio.pause();
+      audio.currentTime = 0;
+      cassette.classList.remove('playing');
+      progressFill.style.width = '0%';
+    });
+
+    // Update progress bar
+    audio.addEventListener('timeupdate', () => {
+      if (audio.duration) {
+        const percentage = (audio.currentTime / audio.duration) * 100;
+        progressFill.style.width = `${percentage}%`;
+      }
+    });
+
+    // Scrub / Seek through progress bar
+    progressContainer.addEventListener('click', (e) => {
+      const width = progressContainer.clientWidth;
+      const clickX = e.offsetX;
+      if (audio.duration) {
+        audio.currentTime = (clickX / width) * audio.duration;
+      }
+    });
+
+    // Reset when track ends
+    audio.addEventListener('ended', () => {
+      cassette.classList.remove('playing');
+      progressFill.style.width = '0%';
+    });
+  </script>
+</body>
+</html>
