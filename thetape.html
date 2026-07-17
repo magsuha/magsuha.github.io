@@ -120,7 +120,7 @@
   }
 
   /* center play/pause glyph, only really visible when paused */
-  .glyph {
+  /*.glyph {
     position: absolute;
     left: 50%;
     top: 63%;
@@ -143,7 +143,8 @@
   }
 
   .glyph svg { width: 18px; height: 18px; fill: var(--paper); }
-
+  */
+  
   /* ---------- Below-deck controls ---------- */
 
   .controls {
@@ -258,7 +259,7 @@
         <img class="reel" src="assets/reel-right.png" alt="" draggable="false">
       </div>
 
-     <!--<div class="glyph">
+     <!--<div class="">
         <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
       </div>-->
     </div>
@@ -287,9 +288,9 @@
   <script>
     const player     = document.getElementById('tapePlayer');
     const audio      = document.getElementById('audio');
-    const glyphPlay   = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+    /*const glyphPlay   = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
     const glyphPause  = '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
-    const glyphEl     = player.querySelector('.glyph');
+    const glyphEl     = player.querySelector('.glyph');*/
 
     const fileInput   = document.getElementById('fileInput');
     const fileFallback= document.getElementById('fileFallback');
