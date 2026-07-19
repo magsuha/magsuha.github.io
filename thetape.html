@@ -31,7 +31,13 @@
     min-height: 100vh;
     padding: 32px 16px;
   }
-
+  
+  .linktocoffee{
+    position: fixed;
+    top: 20px; /* 20px gap from the bottom edge */
+    left: 20px;  /* 20px gap from the right edge */
+  }
+  
   .stage {
     width: 100%;
     max-width: 760px;
@@ -246,6 +252,12 @@
 </head>
 <body>
 
+  <div class="linktocoffee">
+    <a href="coffee.html">
+      <img src="images/coffeegrinder.png" alt="Clickable Button Image" style="width: 250px; height: auto;">
+    </a>
+  </div>
+  
   <div class="stage">
 
     <div class="tape-player" id="tapePlayer" role="button" tabindex="0" aria-label="Play or pause">
