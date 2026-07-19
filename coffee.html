@@ -18,6 +18,17 @@
     gap: 34px;
     padding: 20px;
   }
+  .score{
+    font-family: Arial, sans-serif;
+    font-size: 32px;
+    font-weight:bold;
+    color: #6bff8a;
+    min-width: 2ch;
+    text-align:center;
+    transition: color .15s ease;
+  }
+  .score.neg{ color:#ff5c5c; }
+ 
   .row{
     display:flex;
     gap: 12px;
@@ -79,7 +90,7 @@
 <body>
 
 <div class="stage">
-  <p style="color: orange;">Score: <span id="currScore"></span></p>
+  <div class="score" id="scoreDisplay">0</div>
   <div class="row" id="cardRow"></div>
   <div class="controls">
     <button class="btn btn-diff" id="btnDiff">✕</button>
@@ -100,7 +111,8 @@
   const btnMatch = document.getElementById('btnMatch');
   const btnDiff = document.getElementById('btnDiff');
   const bgTrack = document.getElementById('bgTrack');
-
+  const scoreDisplay = document.getElementById('scoreDisplay');
+ 
   let score = 0;
   let cards = [];
   let gameActive = false;
@@ -108,6 +120,12 @@
   let audioAvailable = true;
 
   let audioCtx = null;
+ 
+  function updateScore(){
+    scoreDisplay.textContent = score;
+    scoreDisplay.classList.toggle('neg', score < 0);
+  }
+ 
   function beep(){
     try{
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -173,6 +191,7 @@
 
   function startGame(){
     score = 0;
+    updateScore();
     gameOver = false;
     initRow();
     gameActive = true;
@@ -233,7 +252,7 @@
       score -= 1;
       handleMistake();
     }
-    document.getElementById('currScore') = score;
+    updateScore();
    
     const leaving = cards.shift();
     leaving.el.remove();
