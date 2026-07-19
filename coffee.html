@@ -80,6 +80,7 @@
 
 <div class="stage">
   <div class="score_view">score:</div>
+  <p style="color: orange;">Score: <span id="currScore"></span></p>
   <div class="row" id="cardRow"></div>
   <div class="controls">
     <button class="btn btn-diff" id="btnDiff">✕</button>
@@ -233,7 +234,8 @@
       score -= 1;
       handleMistake();
     }
-
+    document.getElemntById('currScore') = score;
+   
     const leaving = cards.shift();
     leaving.el.remove();
     addCardToRight();
