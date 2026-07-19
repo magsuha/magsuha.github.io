@@ -210,9 +210,9 @@
       bgTrack.pause();
     }
     beep();
-    setTimeout(() => {
+    /*setTimeout(() => {
       if(gameActive && audioAvailable) bgTrack.play().catch(()=>{});
-    }, 320);
+    }, 320);*/
   }
 
   function answer(userSaysMatch){
@@ -226,8 +226,8 @@
 
     if(correct){
       score += 1;
-      if(audioOnPouse){
-       bgTrack.play();
+      if(audioAvailable && bgTrack.paused){
+        bgTrack.play();
       }
     } else {
       score -= 1;
