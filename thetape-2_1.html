@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Tape</title>
+<style>
+  :root{
+    --wood: #6b4a35;
+    --wood-dark: #4a3226;
+    --bg: #1b1917;
+    --paper: #efe9df;
+    --amber: #d98c3a;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+  
+  .linktocoffee{
+    position: fixed;
+    top: 20px; /* 20px gap from the bottom edge */
+    left: 20px;  /* 20px gap from the right edge */
+  }
+  
+  .stage {
+    width: 100%;
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+  }
+
+  /* ---------- The tape player ---------- */
+
+  .tape-player {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1195 / 896;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: 6px;
+    /*box-shadow: 0 30px 60px -20px rgba(0,0,0,0.65);*/
+    transition: transform 0.15s ease;
+  }
+
+  .tape-player:active {
+    transform: scale(0.995);
+  }
+
+  .tape-player img.deck {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+    -webkit-user-drag: none;
+  }
+
+  /* Reel viewport: a circular window cut over each spindle on the deck photo */
+  .reel-window {
+    position: absolute;
+    overflow: hidden;
+    border-radius: 50%;
+    pointer-events: auto;
+    cursor: grab;
+    touch-action: none; /* we handle dragging ourselves, don't let the page scroll */
+  }
+
+  .reel-window:active {
+    cursor: grabbing;
+  }
+
+  /* While the user is manually spinning a reel, the CSS animation steps aside
+     entirely so our inline transform (driven by pointer angle) has full control. */
+  .tape-player.dragging .reel-window img.reel {
+    animation: none;
+  }
+
+  .reel-window.left {
+    left: 17.154%;
+    top: 7.254%;
+    width: 33.473%;
+    height: 44.643%;
+  }
+
+  .reel-window.right {
+    left: 50.209%;
+    top: 6.138%;
+    width: 33.473%;
+    height: 44.643%;
+  }
+
+  .reel-window img.reel {
+    position: absolute;
+    width: 153.21%;
+    height: 114.87%;
+    left: -26.86%;
+    top: -7.44%;
+    max-width: none;
+    transform-origin: 50.17% 50%;
+    animation: spin 2.6s linear infinite;
+    animation-play-state: paused;
+    -webkit-user-drag: none;
+  }
+
+  /* Slightly different timing per reel to feel less mechanical once tape "unspools" -
+     kept identical here since supply/takeup ratio isn't modeled, but easy to offset */
+  .reel-window.right img.reel {
+    animation-duration: 2.6s;
+  }
+
+  .tape-player.playing .reel-window img.reel {
+    animation-play-state: running;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  /* center play/pause glyph, only really visible when paused */
+  /*.glyph {
+    position: absolute;
+    left: 50%;
+    top: 63%;
+    transform: translate(-50%, -50%);
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: rgba(20, 18, 16, 0.55);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.9;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+  }
+
+  .tape-player.playing .glyph {
+    opacity: 0;
+  }
+
+  .glyph svg { width: 18px; height: 18px; fill: var(--paper); }
+  */
+  
+  /* ---------- Below-deck controls ---------- */
+
+  .controls {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--paper);
+  }
+
+  .track-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .track-title {
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    color: var(--paper);
+    opacity: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .time-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .time {
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    color: var(--paper);
+    opacity: 0.55;
+    width: 34px;
+  }
+
+  .time.end { text-align: right; }
+
+  .scrub {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 3px;
+    border-radius: 3px;
+    background: rgba(239,233,223,0.2);
+    outline: none;
+    cursor: pointer;
+  }
+
+  .scrub::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--amber);
+    cursor: pointer;
+    margin-top: -4px;
+  }
+
+  .scrub::-moz-range-thumb {
+    width: 11px;
+    height: 11px;
+    border: none;
+    border-radius: 50%;
+    background: var(--amber);
+    cursor: pointer;
+  }
+
+  .scrub::-webkit-slider-runnable-track {
+    height: 3px;
+    border-radius: 3px;
+    background: rgba(239,233,223,0.2);
+  }
+
+  .hint {
+    font-size: 12px;
+    color: var(--paper);
+    opacity: 0.5;
+    text-align: center;
+  }
+
+  .file-fallback {
+    font-size: 18px;
+    color: var(--amber);
+    opacity: 0.5;
+    text-decoration: underline;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+  }
+
+  .file-fallback:hover { opacity: 1; }
+</style>
+</head>
+<body>
+
+  <div class="linktocoffee">
+    <a href="coffee.html">
+      <img src="images/coffeegrinder.png" alt="Clickable Button Image" style="width: 250px; height: auto;">
+    </a>
+  </div>
+  
+  <div class="stage">
+
+    <div class="tape-player" id="tapePlayer" role="button" tabindex="0" aria-label="Play or pause">
+      <img class="deck" src="images/thetape_nobackground.png" alt="Sony TC-366 reel-to-reel tape deck" draggable="false">
+
+      <div class="reel-window left">
+        <img class="reel" src="assets/reel-left.png" alt="" draggable="false">
+      </div>
+
+      <div class="reel-window right">
+        <img class="reel" src="assets/reel-right.png" alt="" draggable="false">
+      </div>
+
+     <!--<div class="">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </div>-->
+    </div>
+
+    <div class="controls">
+      <div class="track-info">
+        <div class="track-title" id="trackTitle">No track loaded — click the deck, then choose a file</div>
+        <div class="time-row">
+          <span class="time" id="timeCurrent">0:00</span>
+          <input type="range" class="scrub" id="scrub" min="0" max="100" value="0" step="0.1">
+          <span class="time end" id="timeEnd">0:00</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hint">
+      <!--Click anywhere on the deck to play / pause &nbsp;·&nbsp;-->
+      <button class="file-fallback" id="fileFallback" type="button">load an audio file</button>
+    </div>
+
+    <input type="file" id="fileInput" accept="audio/*" style="display:none">
+  </div>
+
+  <script>
+  (function () {
+    const player          = document.getElementById('tapePlayer');
+    const reelLeftWindow  = document.querySelector('.reel-window.left');
+    const reelRightWindow = document.querySelector('.reel-window.right');
+    const reelLeftImg     = reelLeftWindow.querySelector('img.reel');
+    const reelRightImg    = reelRightWindow.querySelector('img.reel');
+
+    const fileInput    = document.getElementById('fileInput');
+    const fileFallback = document.getElementById('fileFallback');
+    const trackTitle   = document.getElementById('trackTitle');
+    const scrub        = document.getElementById('scrub');
+    const timeCurrent  = document.getElementById('timeCurrent');
+    const timeEnd      = document.getElementById('timeEnd');
+
+    function formatTime(sec) {
+      if (!isFinite(sec) || sec < 0) return "0:00";
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60).toString().padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    // =================================================================
+    // TapeEngine
+    //
+    // Normal playback uses a plain AudioBufferSourceNode (cheap, high
+    // quality, native playbackRate handling).
+    //
+    // Manual "scratching" (dragging a reel) needs things a native
+    // <audio> element / AudioBufferSourceNode simply can't do: playing
+    // backwards, and playing at a speed that changes continuously with
+    // your hand. For that we swap in a ScriptProcessorNode and read
+    // samples out of the decoded buffer ourselves, one output block at
+    // a time, advancing the "playhead" by however many buffer-samples
+    // your drag implies per real second — negative to go backwards.
+    //
+    // Note: ScriptProcessorNode is the older/simpler Web Audio API for
+    // this (AudioWorkletNode is the modern replacement). It's used here
+    // deliberately for simplicity in a single-file page; if this ever
+    // needs to scale up, moving the sample loop into an AudioWorklet
+    // would be the next step.
+    // =================================================================
+    const TapeEngine = {
+      ctx: null,
+      buffer: null,
+      duration: 0,
+
+      // Normal playback state
+      isPlaying: false,
+      sourceNode: null,
+      startedAtCtxTime: 0,
+      startedAtPosition: 0,
+
+      // Scratch state
+      scratchNode: null,
+      playheadSamples: 0,
+      scratchRate: 0,        // buffer-samples advanced per output-sample (signed)
+      _wasPlayingBeforeScratch: false,
+
+      _rafId: null,
+
+      ensureContext() {
+        if (!this.ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AC();
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+      },
+
+      async loadFromUrl(url) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('fetch failed: ' + res.status);
+          const arr = await res.arrayBuffer();
+          await this._decode(arr);
+          return true;
+        } catch (err) {
+          console.warn('TapeEngine: could not autoload', url, err);
+          return false;
+        }
+      },
+
+      async loadFromFile(file) {
+        const arr = await file.arrayBuffer();
+        await this._decode(arr);
+      },
+
+      async _decode(arrayBuffer) {
+        this.ensureContext();
+        const buf = await this.ctx.decodeAudioData(arrayBuffer);
+        this.stop();
+        this.buffer = buf;
+        this.duration = buf.duration;
+        this.playheadSamples = 0;
+        scrub.max = this.duration;
+        timeEnd.textContent = formatTime(this.duration);
+        this._updateUI(0);
+      },
+
+      get currentTime() {
+        if (!this.buffer) return 0;
+        if (this.isPlaying && this.sourceNode) {
+          const t = this.startedAtPosition + (this.ctx.currentTime - this.startedAtCtxTime);
+          return Math.min(Math.max(t, 0), this.duration);
+        }
+        return this.playheadSamples / this.buffer.sampleRate;
+      },
+
+      play() {
+        if (!this.buffer) return;
+        this.ensureContext();
+        this._stopSourceNode();
+
+        const startPos = this.playheadSamples / this.buffer.sampleRate;
+        const node = this.ctx.createBufferSource();
+        node.buffer = this.buffer;
+        node.connect(this.ctx.destination);
+        node.onended = () => {
+          if (this.isPlaying && this.sourceNode === node) {
+            this.isPlaying = false;
+            this.playheadSamples = this.buffer.length - 1;
+            this._onStateChange();
+          }
+        };
+
+        this.sourceNode = node;
+        this.startedAtCtxTime = this.ctx.currentTime;
+        this.startedAtPosition = startPos;
+        node.start(0, startPos);
+
+        this.isPlaying = true;
+        this._onStateChange();
+        this._loop();
+      },
+
+      pause() {
+        if (!this.isPlaying) return;
+        this.playheadSamples = Math.round(this.currentTime * this.buffer.sampleRate);
+        this._stopSourceNode();
+        this.isPlaying = false;
+        this._onStateChange();
+      },
+
+      stop() {
+        this._stopSourceNode();
+        this._stopScratchNode();
+        this.isPlaying = false;
+      },
+
+      _stopSourceNode() {
+        if (this.sourceNode) {
+          this.sourceNode.onended = null;
+          try { this.sourceNode.stop(); } catch (e) {}
+          this.sourceNode.disconnect();
+          this.sourceNode = null;
+        }
+      },
+
+      togglePlay() {
+        if (!this.buffer) {
+          fileInput.click();
+          return;
+        }
+        if (this.isPlaying) this.pause();
+        else this.play();
+      },
+
+      seek(seconds) {
+        if (!this.buffer) return;
+        const clamped = Math.min(Math.max(seconds, 0), this.duration);
+        this.playheadSamples = Math.round(clamped * this.buffer.sampleRate);
+        if (this.isPlaying) {
+          this._stopSourceNode();
+          const node = this.ctx.createBufferSource();
+          node.buffer = this.buffer;
+          node.connect(this.ctx.destination);
+          node.onended = () => {
+            if (this.isPlaying && this.sourceNode === node) {
+              this.isPlaying = false;
+              this._onStateChange();
+            }
+          };
+          this.sourceNode = node;
+          this.startedAtCtxTime = this.ctx.currentTime;
+          this.startedAtPosition = clamped;
+          node.start(0, clamped);
+        }
+        this._updateUI(clamped);
+      },
+
+      // ---------------- Manual scratch (reel drag) ----------------
+
+      beginScratch() {
+        if (!this.buffer) return;
+        this.ensureContext();
+        this._wasPlayingBeforeScratch = this.isPlaying;
+
+        // Freeze the exact position we're grabbing the tape at.
+        this.playheadSamples = Math.round(this.currentTime * this.buffer.sampleRate);
+        this._stopSourceNode();
+        this.isPlaying = false;
+        this._onStateChange();
+
+        this.scratchRate = 0;
+
+        const bufferSize = 2048;
+        const node = this.ctx.createScriptProcessor(bufferSize, 0, 2);
+        const chL = this.buffer.getChannelData(0);
+        const chR = this.buffer.numberOfChannels > 1 ? this.buffer.getChannelData(1) : chL;
+        const len = this.buffer.length;
+
+        node.onaudioprocess = (e) => {
+          const outL = e.outputBuffer.getChannelData(0);
+          const outR = e.outputBuffer.numberOfChannels > 1 ? e.outputBuffer.getChannelData(1) : null;
+          let pos = this.playheadSamples;
+          const rate = this.scratchRate;
+
+          for (let i = 0; i < outL.length; i++) {
+            if (rate !== 0 && pos >= 0 && pos < len - 1) {
+              const idx  = pos | 0;
+              const frac = pos - idx;
+              const idx2 = idx + 1 < len ? idx + 1 : idx;
+              // linear interpolation for smoother off-integer playback speeds
+              outL[i] = chL[idx] * (1 - frac) + chL[idx2] * frac;
+              if (outR) outR[i] = chR[idx] * (1 - frac) + chR[idx2] * frac;
+              pos += rate;
+              if (pos < 0)        { pos = 0;        this.scratchRate = 0; }
+              if (pos >= len - 1) { pos = len - 1;   this.scratchRate = 0; }
+            } else {
+              outL[i] = 0;
+              if (outR) outR[i] = 0;
+            }
+          }
+          this.playheadSamples = pos;
+        };
+
+        node.connect(this.ctx.destination);
+        this.scratchNode = node;
+        this._loop();
+      },
+
+      // deltaSeconds: how much tape-time the drag implies moving, signed
+      // dtSeconds: real wall-clock time since the last update
+      updateScratch(deltaSeconds, dtSeconds) {
+        if (!this.scratchNode || dtSeconds <= 0) return;
+        let rate = deltaSeconds / dtSeconds; // audio-seconds per real-second
+        const MAX_RATE = 6; // clamp so a fast flick doesn't scream
+        rate = Math.max(-MAX_RATE, Math.min(MAX_RATE, rate));
+        this.scratchRate = rate;
+      },
+
+      // Called when the pointer is still down but has stopped moving for
+      // a moment — like holding a real reel still, the tape stops too.
+      decayScratch() {
+        this.scratchRate *= 0.7;
+        if (Math.abs(this.scratchRate) < 0.02) this.scratchRate = 0;
+      },
+
+      endScratch() {
+        this._stopScratchNode();
+        if (this._wasPlayingBeforeScratch) {
+          this.play();
+        } else {
+          this._updateUI(this.currentTime);
+          this._onStateChange();
+        }
+      },
+
+      _stopScratchNode() {
+        if (this.scratchNode) {
+          this.scratchNode.onaudioprocess = null;
+          this.scratchNode.disconnect();
+          this.scratchNode = null;
+        }
+      },
+
+      // ---------------- UI sync ----------------
+
+      _onStateChange() {
+        player.classList.toggle('playing', this.isPlaying);
+      },
+
+      _loop() {
+        if (this._rafId) cancelAnimationFrame(this._rafId);
+        const step = () => {
+          this._updateUI(this.currentTime);
+          if (this.isPlaying || this.scratchNode) {
+            this._rafId = requestAnimationFrame(step);
+          } else {
+            this._rafId = null;
+          }
+        };
+        this._rafId = requestAnimationFrame(step);
+      },
+
+      _updateUI(t) {
+        if (!scrub.matches(':active')) scrub.value = t;
+        timeCurrent.textContent = formatTime(t);
+      }
+    };
+
+    // =================================================================
+    // Manual reel rotation while dragging
+    // =================================================================
+
+    let currentReelAngle = 0; // degrees, shared by both reels while dragging
+
+    function setReelAngle(deg) {
+      reelLeftImg.style.transform  = `rotate(${deg}deg)`;
+      reelRightImg.style.transform = `rotate(${deg}deg)`;
+    }
+
+    // =================================================================
+    // Drag handling — grabbing either reel spins both (same tape path),
+    // rotation follows the pointer's angle around the reel's center,
+    // and rotation speed drives playback speed/direction.
+    // =================================================================
+
+    const SECONDS_PER_RADIAN = 0.35; // how much tape "moves" per radian of hand rotation
+    let dragState = null;            // { pointerId, centerX, centerY, lastAngle, lastTime, moved }
+    let suppressNextClick = false;
+    let stalledCheckId = null;
+
+    function angleFromCenter(cx, cy, x, y) {
+      return Math.atan2(y - cy, x - cx);
+    }
+
+    function shortestAngleDelta(from, to) {
+      let d = to - from;
+      while (d > Math.PI)  d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      return d;
+    }
+
+    function startDrag(reelWindowEl, e) {
+      const rect = reelWindowEl.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+
+      dragState = {
+        pointerId: e.pointerId,
+        centerX: cx,
+        centerY: cy,
+        lastAngle: angleFromCenter(cx, cy, e.clientX, e.clientY),
+        lastTime: performance.now(),
+        moved: false
+      };
+
+      player.classList.add('dragging');
+      TapeEngine.beginScratch();
+      reelWindowEl.setPointerCapture(e.pointerId);
+
+      stalledCheckId = setInterval(() => {
+        if (!dragState) return;
+        if (performance.now() - dragState.lastTime > 70) {
+          TapeEngine.decayScratch();
+        }
+      }, 50);
+    }
+
+    function moveDrag(e) {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      const now = performance.now();
+      const angle = angleFromCenter(dragState.centerX, dragState.centerY, e.clientX, e.clientY);
+      const dAngle = shortestAngleDelta(dragState.lastAngle, angle);
+      const dt = Math.max((now - dragState.lastTime) / 1000, 0.001);
+
+      if (Math.abs(dAngle) > 0.001) dragState.moved = true;
+
+      currentReelAngle += dAngle * (180 / Math.PI);
+      setReelAngle(currentReelAngle);
+
+      TapeEngine.updateScratch(dAngle * SECONDS_PER_RADIAN, dt);
+
+      dragState.lastAngle = angle;
+      dragState.lastTime = now;
+    }
+
+    function endDrag(e) {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      clearInterval(stalledCheckId);
+      stalledCheckId = null;
+
+      player.classList.remove('dragging');
+      TapeEngine.endScratch();
+
+      if (dragState.moved) suppressNextClick = true;
+      dragState = null;
+    }
+
+    [reelLeftWindow, reelRightWindow].forEach((win) => {
+      win.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        startDrag(win, e);
+      });
+      win.addEventListener('pointermove', moveDrag);
+      win.addEventListener('pointerup', endDrag);
+      win.addEventListener('pointercancel', endDrag);
+    });
+
+    // =================================================================
+    // Deck click-to-toggle (a tap still plays/pauses; a drag doesn't)
+    // =================================================================
+
+    player.addEventListener('click', () => {
+      if (suppressNextClick) {
+        suppressNextClick = false;
+        return;
+      }
+      TapeEngine.togglePlay();
+    });
+
+    player.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        TapeEngine.togglePlay();
+      }
+    });
+
+    document.querySelector('.controls').addEventListener('click', (e) => e.stopPropagation());
+    document.querySelector('.hint').addEventListener('click', (e) => e.stopPropagation());
+
+    scrub.addEventListener('input', () => {
+      TapeEngine.seek(parseFloat(scrub.value));
+    });
+
+    fileFallback.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      trackTitle.textContent = file.name.replace(/\.[^/.]+$/, "");
+      await TapeEngine.loadFromFile(file);
+      TapeEngine.play();
+    });
+
+    // =================================================================
+    // Default track autoload
+    // =================================================================
+
+    TapeEngine.loadFromUrl('assets/tape.mp3').then((ok) => {
+      if (ok) trackTitle.textContent = 'Your Track Name';
+    });
+
+  })();
+  </script>
+
+</body>
+</html>
