@@ -505,7 +505,7 @@
         this.dryGain = ctx.createGain();
         this.wetGain = ctx.createGain();
         this.convolver = ctx.createConvolver();
-        this.convolver.buffer = createReverbImpulse(ctx, 5.5, 3);
+        this.convolver.buffer = createReverbImpulse(ctx, 4.5, 3);
 
         this.dryGain.gain.value = 1;
         this.wetGain.gain.value = 0;
