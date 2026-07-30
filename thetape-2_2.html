@@ -519,7 +519,7 @@
       setMood(t) {
         this.ensureContext();
         this.moodT = Math.min(Math.max(t, 0), 1);
-        this._setPlaybackRate(1 - 0.4 * this.moodT); // slows down to 0.6x at full drift
+        this._setPlaybackRate(1 - 0.3 * this.moodT); // slows down to 0.7x at full drift
         this.dryGain.gain.value = 1 - this.moodT * 0.85;
         this.wetGain.gain.value = this.moodT * 1.3;
       },
